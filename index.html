@@ -789,6 +789,32 @@ body {
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 .repeat-indicator { animation: pulse 1.5s ease infinite; }
 
+/* ── SPEAK BUTTON ── */
+.speak-btn {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  background: none;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text3);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  z-index: 5;
+  flex-shrink: 0;
+}
+.speak-btn:active, .speak-btn.speaking {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
 /* ── SWIPE HINT ── */
 .swipe-hint {
   display: flex;
@@ -991,6 +1017,7 @@ body {
         <div class="study-card-label">Pregunta</div>
         <div class="study-question" id="study-question">—</div>
         <div class="study-repeat-badge repeat-indicator" id="study-repeat-badge" style="display:none">↺ REPASO</div>
+        <button class="speak-btn" id="speak-btn" style="display:none;" onclick="event.stopPropagation(); speakCard()" title="Pronunciar">🔊</button>
       </div>
       <div class="study-card-face study-card-back">
         <div class="study-card-topic" id="study-topic-back">—</div>
@@ -1076,6 +1103,22 @@ body {
       <label class="form-label">Descripción (opcional)</label>
       <input type="text" class="form-input" id="new-deck-desc" placeholder="Ej: Variables y tipos">
     </div>
+    <div class="form-group">
+      <label class="form-label">🔊 Pronunciación automática</label>
+      <select class="form-input" id="new-deck-lang">
+        <option value="">Sin audio</option>
+        <option value="en-US">Inglés (EE.UU.)</option>
+        <option value="en-GB">Inglés (Reino Unido)</option>
+        <option value="es-ES">Español (España)</option>
+        <option value="es-MX">Español (México)</option>
+        <option value="fr-FR">Francés</option>
+        <option value="de-DE">Alemán</option>
+        <option value="pt-BR">Portugués (Brasil)</option>
+        <option value="it-IT">Italiano</option>
+        <option value="ja-JP">Japonés</option>
+        <option value="zh-CN">Chino (Mandarín)</option>
+      </select>
+    </div>
     <div style="font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;">Tarjetas</div>
     <div class="cards-list" id="new-deck-cards"></div>
     <button class="btn btn-ghost btn-full" onclick="addCardField('new-deck-cards','new-cf')" style="margin-bottom:4px;">+ Agregar tarjeta</button>
@@ -1098,6 +1141,22 @@ body {
     <div class="form-group">
       <label class="form-label">Descripción (opcional)</label>
       <input type="text" class="form-input" id="edit-deck-desc">
+    </div>
+    <div class="form-group">
+      <label class="form-label">🔊 Pronunciación automática</label>
+      <select class="form-input" id="edit-deck-lang">
+        <option value="">Sin audio</option>
+        <option value="en-US">Inglés (EE.UU.)</option>
+        <option value="en-GB">Inglés (Reino Unido)</option>
+        <option value="es-ES">Español (España)</option>
+        <option value="es-MX">Español (México)</option>
+        <option value="fr-FR">Francés</option>
+        <option value="de-DE">Alemán</option>
+        <option value="pt-BR">Portugués (Brasil)</option>
+        <option value="it-IT">Italiano</option>
+        <option value="ja-JP">Japonés</option>
+        <option value="zh-CN">Chino (Mandarín)</option>
+      </select>
     </div>
     <div style="font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;">Tarjetas</div>
     <div class="cards-list" id="edit-deck-cards"></div>
@@ -1404,6 +1463,7 @@ function openNewDeckModal() {
   cardFieldCount = 0;
   document.getElementById('new-deck-name').value = '';
   document.getElementById('new-deck-desc').value = '';
+  document.getElementById('new-deck-lang').value = '';
   document.getElementById('new-deck-cards').innerHTML = '';
   addCardField('new-deck-cards', 'new-cf');
   document.getElementById('modal-new-deck').classList.add('active');
@@ -1514,7 +1574,7 @@ function saveNewDeck() {
   const cards = collectCards('new-deck-cards');
   if (cards === null) return;
   if (!cards.length) { alert('Agrega al menos una tarjeta'); return; }
-  state.decks.push({ id: 'deck-' + Date.now(), name, desc: document.getElementById('new-deck-desc').value.trim(), created: new Date().toISOString(), cards });
+  state.decks.push({ id: 'deck-' + Date.now(), name, desc: document.getElementById('new-deck-desc').value.trim(), lang: document.getElementById('new-deck-lang').value, created: new Date().toISOString(), cards });
   saveState(); closeModal('modal-new-deck'); renderDecks();
 }
 
@@ -1526,6 +1586,7 @@ function editDeck(id) {
   cardFieldCount = 0;
   document.getElementById('edit-deck-name').value = deck.name;
   document.getElementById('edit-deck-desc').value = deck.desc || '';
+  document.getElementById('edit-deck-lang').value = deck.lang || '';
   const container = document.getElementById('edit-deck-cards');
   container.innerHTML = '';
   deck.cards.forEach(card => addCardField('edit-deck-cards', 'edit-cf', card));
@@ -1541,7 +1602,7 @@ function saveEditDeck() {
   const cards = collectCards('edit-deck-cards');
   if (cards === null) return;
   if (!cards.length) { alert('Agrega al menos una tarjeta'); return; }
-  deck.name = name; deck.desc = document.getElementById('edit-deck-desc').value.trim(); deck.cards = cards;
+  deck.name = name; deck.desc = document.getElementById('edit-deck-desc').value.trim(); deck.lang = document.getElementById('edit-deck-lang').value; deck.cards = cards;
   saveState(); closeModal('modal-edit-deck'); renderDecks();
 }
 
@@ -1665,6 +1726,14 @@ function renderStudyCard() {
     document.getElementById('study-flip-controls').classList.remove('hidden');
     document.getElementById('swipe-hint').style.display = 'none';
     mcGrid.style.display = 'none'; mcGrid.innerHTML = '';
+  }
+
+  // Show speak button if deck has a language set
+  const speakBtn = document.getElementById('speak-btn');
+  if (speakBtn) {
+    const hasLang = !!(studyState.deck?.lang);
+    speakBtn.style.display = hasLang && !isCode ? '' : 'none';
+    speakBtn.classList.remove('speaking');
   }
 }
 
@@ -1833,6 +1902,24 @@ function playTimerEnd() {
       osc.start(ctx.currentTime + i*0.35); osc.stop(ctx.currentTime + i*0.35 + 0.5);
     });
   } catch {}
+}
+
+// ── TEXT TO SPEECH ─────────────────────────────────────────
+function speakCard() {
+  if (!('speechSynthesis' in window)) return;
+  const card = studyState.queue[studyState.idx];
+  const lang = studyState.deck?.lang;
+  if (!card || !lang) return;
+  window.speechSynthesis.cancel();
+  const text = card.q;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang;
+  utter.rate = 0.85;
+  const btn = document.getElementById('speak-btn');
+  if (btn) btn.classList.add('speaking');
+  utter.onend = () => { if (btn) btn.classList.remove('speaking'); };
+  utter.onerror = () => { if (btn) btn.classList.remove('speaking'); };
+  window.speechSynthesis.speak(utter);
 }
 
 // ── TIMER CONFIG ──────────────────────────────────────────
